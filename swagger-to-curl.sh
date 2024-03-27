@@ -35,7 +35,11 @@ generate_curl_requests() {
                 fi
 
                 # Add base URL and path
-                curl_command+=" $base_url$path"
+                if [ ! -z "$base_url" ]; then
+                    curl_command+=" $base_url$path"
+                else
+                    curl_command+=" $path"
+                fi
 
                 # Add headers
                 curl_command+=" -H 'accept: application/json'"
@@ -56,18 +60,46 @@ generate_curl_requests() {
     done
 }
 
-# Check if Swagger file argument is provided
+# Initialize variables with default values
+swagger_file=""
+base_url=""
+x_api_key=""
+proxy=""
+output_file="curl_requests.txt"
+
+# Parse command line arguments
+while getopts ":f:u:k:p:o:" opt; do
+    case $opt in
+        f) swagger_file="$OPTARG";;
+        u) base_url="$OPTARG";;
+        k) x_api_key="$OPTARG";;
+        p) proxy="$OPTARG";;
+        o) output_file="$OPTARG";;
+        \?) echo "Invalid option: -$OPTARG" >&2
+            exit 1;;
+        :) echo "Option -$OPTARG requires an argument." >&2
+            exit 1;;
+    esac
+done
+
+# Check if no arguments provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <swagger_file> [<base_url>] [<x_api_key>] [<proxy>] [<output_file>]"
+    echo "Usage: $0 [-f swagger_file] [-u base_url] [-k x_api_key] [-p proxy] [-o output_file]"
+    echo
+    echo "Arguments:"
+    echo "  -f  Swagger file (required)"
+    echo "  -u  Base URL of the API (optional)"
+    echo "  -k  X-API-Key for authentication (optional)"
+    echo "  -p  Proxy address (optional)"
+    echo "  -o  Output file for curl commands (default: curl_requests.txt)"
     exit 1
 fi
 
-# Extract arguments
-swagger_file="$1"
-base_url="${2:-}"
-x_api_key="${3:-}"
-proxy="${4:-}"
-output_file="${5:-curl_requests.txt}"
+# Check if Swagger file argument is provided
+if [ -z "$swagger_file" ]; then
+    echo "Error: Swagger file not provided!"
+    exit 1
+fi
 
 # Check if Swagger file exists
 if [ ! -f "$swagger_file" ]; then
